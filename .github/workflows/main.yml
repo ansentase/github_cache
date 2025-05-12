@@ -1,0 +1,48 @@
+name: Python CI with FFmpeg
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Cache FFmpeg binary
+      id: cache-ffmpeg
+      uses: actions/cache@v4
+      with:
+        path: ./ffmpeg
+        key: ${{ runner.os }}-ffmpeg-cache
+
+    - name: Download FFmpeg if not cached
+      if: steps.cache-ffmpeg.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p ffmpeg
+        curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o ffmpeg.tar.xz
+        tar -xf ffmpeg.tar.xz --strip-components=1 -C ffmpeg
+        rm ffmpeg.tar.xz
+
+    - name: Add FFmpeg to PATH
+      run: echo "${{ github.workspace }}/ffmpeg" >> $GITHUB_PATH
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install Python dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run your Python code
+      run: python your_script.py
